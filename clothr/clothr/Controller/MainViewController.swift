@@ -34,9 +34,12 @@ class ViewController: UIViewController {
     var savedURL = [Any]()
     var saleBool = [String]()
     var savedBrandNames = [Any]()
+    var savedProducts = [Any]()
     var pagingIndex=[String: NSNumber]() //dictionary with search term as a key, paging index as value
     var searchIndex: NSNumber=0
     var bufferIndex: NSInteger=0
+    var checking = [Any]()
+    var productIDs = [NSNumber]()
     @IBOutlet weak var saveButton: UIButton!
     @IBOutlet weak var image: UIImageView!
     @IBOutlet weak var searchProduct: UIButton!
@@ -57,13 +60,39 @@ class ViewController: UIViewController {
         xCenter = image.center.x
         yCenter = image.center.y
         let buffer = helperfunctions()
+        buffer.fillColorBuffer()
+//        buffer.fillSavedProducts(self.productIDs)
         buffer.fillBrandBuffer()
         buffer.fillRetailerBuffer()
-        buffer.fillColorBuffer()
         
+        
+        let when2=DispatchTime.now()+2
+        DispatchQueue.main.asyncAfter(deadline: when2)
+        {
+            buffer.fillSavedProducts(self.productIDs)
+        }
+        let when = DispatchTime.now() + 8
+        DispatchQueue.main.asyncAfter(deadline: when) {
+            self.savedProducts=(NSKeyedUnarchiver.unarchiveObject(with: UserDefaults.standard.object(forKey: "savedProducts") as! Data) as? [Any])!
+            print("SZIE")
+            print(self.savedProducts.count)
+//            for i in 0...self.savedProducts.count-1
+//            {
+//                let thisProduct: PSSProduct? = self.savedProducts[i] as? PSSProduct
+//                print(thisProduct?.productID)
+//            }
+        }
+//        archiveFilterData()
 //        buffer.fillSizeBuffer()
         // hide the back button
-        
+//        savedProducts=(NSKeyedUnarchiver.unarchiveObject(with: UserDefaults.standard.object(forKey: "savedProducts") as! Data) as? [Any])!
+//        print("SZIE")
+//        print(savedProducts.count)
+//                for i in 0...savedProducts.count
+//        {
+//            let thisProduct: PSSProduct? = savedProducts[i] as? PSSProduct
+//            print(thisProduct?.productID)
+//        }
         self.navigationItem.setHidesBackButton(true, animated: false)
         let doubleTap = UITapGestureRecognizer(target: self, action: #selector(showDetails(gestureRecognizer:)))
         doubleTap.numberOfTapsRequired=2
@@ -125,6 +154,7 @@ class ViewController: UIViewController {
                 self.savedURL=user["savedProductURL"] as! [Any]
                 self.saleBool=user["saleBooleans"] as! [String]
                 self.pagingIndex=user["pagingIndexes"] as! [String : NSNumber]
+                self.productIDs=user["productIDs"] as! [NSNumber]
             }
         }
     }
@@ -165,13 +195,7 @@ class ViewController: UIViewController {
             if error != nil {
                 print(error as Any)
             } else if let userData = userData {
-                userData["savedProductImages"] = self.savedImages
-                userData["savedProductNames"] = self.savedNames
-                userData["savedProductURL"] = self.savedURL
-                userData["savedProductPrices"] = self.savedPrices
-                userData["pagingIndexes"] = self.pagingIndex
-                userData["saleBooleans"] = self.saleBool
-                userData["savedBrandNames"] = self.savedBrandNames
+                userData["productIDs"] = self.productIDs
                 userData.saveInBackground()
 //                update
 //                userData.saveEventually()
@@ -194,11 +218,14 @@ class ViewController: UIViewController {
         }
         imageIndex=0
         let buffer = helperfunctions()
-        
         buffer.fillProductBuffer(search as String!, searchIndex)
         
         let when = DispatchTime.now() + 2
         DispatchQueue.main.asyncAfter(deadline: when) {
+            if let data = UserDefaults.standard.object(forKey: "color") as? NSData {
+                self.checking = NSKeyedUnarchiver.unarchiveObject(with: data as Data) as! [Any]
+            }
+            print("HIHIHIHI \(self.checking.count)")
             if let data = UserDefaults.standard.object(forKey: "name") as? NSData {
                 products = NSKeyedUnarchiver.unarchiveObject(with: data as Data) as! [Any]
             }
@@ -326,11 +353,8 @@ class ViewController: UIViewController {
         //saves product details to database to be used by saved page
             if image.center.x > (view.bounds.width / 2 + 100) {
                 let thisProduct: PSSProduct? = products[imageIndex-1] as? PSSProduct
-                savedImages.append(thisProduct?.image.url.absoluteString as Any)
-                savedNames.append(thisProduct?.name as Any)
-                savedPrices.append(thisProduct?.regularPriceLabel as Any)
-                savedURL.append(thisProduct?.buyURL.absoluteString as Any)
-                savedBrandNames.append(thisProduct?.brand.name as Any)
+                productIDs.append((thisProduct?.productID)!)
+                savedProducts.append(thisProduct as Any)
                 if(thisProduct?.isOnSale())!
                 {
                     saleBool.append((thisProduct?.salePriceLabel)!)
@@ -385,19 +409,11 @@ class ViewController: UIViewController {
 //-----------------------------------------encode data for saveProducts()------------------------------//
     func encodeData()
     {
-        let encodedImages = NSKeyedArchiver.archivedData(withRootObject: savedImages)
-        let encodedNames = NSKeyedArchiver.archivedData(withRootObject: savedNames)
-        let encodedPrices = NSKeyedArchiver.archivedData(withRootObject: savedPrices)
-        let encodedURL = NSKeyedArchiver.archivedData(withRootObject: savedURL)
-        let encodedSales = NSKeyedArchiver.archivedData(withRootObject: saleBool)
-        let encodedBrands = NSKeyedArchiver.archivedData(withRootObject: savedBrandNames)
+        let encodedIDs = NSKeyedArchiver.archivedData(withRootObject: productIDs)
+        let encodedProducts=NSKeyedArchiver.archivedData(withRootObject: savedProducts)
         let defaults = UserDefaults.standard
-        defaults.set(encodedImages, forKey: "images")
-        defaults.set(encodedNames, forKey: "names")
-        defaults.set(encodedPrices, forKey: "prices")
-        defaults.set(encodedURL, forKey: "url")
-        defaults.set(encodedSales, forKey: "sales")
-        defaults.set(encodedBrands, forKey: "savedBrandNames")
+        defaults.set(encodedIDs, forKey: "productIDs")
+        defaults.set(encodedProducts, forKey: "savedProducts")
     }
 
 //------------------------------------------search for what user wants---------------------------------//
@@ -449,7 +465,7 @@ extension ViewController : UITextFieldDelegate
     func archiveFilterData()
     {
         
-        let when1 = DispatchTime.now() + 1
+        let when1 = DispatchTime.now() + 2
         DispatchQueue.main.asyncAfter(deadline: when1) {
             
             
@@ -485,6 +501,7 @@ extension ViewController : UITextFieldDelegate
             
             if let list=colors?.count   //setting up color dictionary for UI in filters page
             {
+                print(list)
                 for index in 0...list-1
                 {
                     let color: PSSColor? = colors![index] as? PSSColor

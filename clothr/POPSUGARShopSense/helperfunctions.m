@@ -23,6 +23,7 @@
 @property (nonatomic, strong) NSArray *categories;
 @property (nonatomic, strong) NSMutableData *data;
 @property (nonatomic, strong) NSMutableArray *buffer;
+@property (nonatomic, strong) NSMutableArray *savedProducts;
 @property (nonatomic, strong) PSSProduct *product;
 @end
 
@@ -32,6 +33,7 @@ typedef void(^myCompletion)(BOOL);
 @implementation helperfunctions
 
 @synthesize products = _products;
+@synthesize savedProducts = _savedProducts;
 //@synthesize buffer = _buffer;
 // Given `notes` contains an array of Note objects
 //NSData *data = [NSKeyedArchiver archivedDataWithRootObject:notes];
@@ -120,7 +122,32 @@ typedef void(^myCompletion)(BOOL);
     compblock(NO);
     return;
 }
-
+-(void)fillSavedProducts:(NSArray *)savedArray
+{
+    self.savedProducts=[[NSMutableArray alloc] init];
+    void(^myBlock)(void)  = ^(void) {
+        for(int i=0;i<savedArray.count;i++)
+        {
+            printf("i: %d ", i);
+            printf("idNumber: %d\n", [savedArray[i] intValue]);
+            [[PSSClient sharedClient] getProductByID:savedArray[i] success:^(PSSProduct *product) {
+                [self.savedProducts addObject:product];
+                printf("colors %lu", (unsigned long)self.savedProducts.count);
+                
+            } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+                NSLog(@"Request failed with error: %@", error);
+            }];
+        }
+    };
+    myBlock();
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        printf("colors %lu", (unsigned long)self.savedProducts.count);
+        NSUserDefaults *data = [NSUserDefaults standardUserDefaults];
+        [data setObject:[NSKeyedArchiver archivedDataWithRootObject:self.savedProducts] forKey:@"savedProducts"];
+        [data synchronize];
+    });
+    
+}
 -(void)fillBrandBuffer
 {
     __weak typeof(self) weakSelf = self;
@@ -156,15 +183,21 @@ typedef void(^myCompletion)(BOOL);
 
 -(void)fillColorBuffer
 {
-    __weak typeof(self) weakSelf = self;
+//    __weak typeof(self) weakSelf = self;
     [[PSSClient sharedClient] getColorsSuccess:^(NSArray *colors) {
-        for(int i=0;i<14;i++)
-        {
-            [weakSelf.colors addObject:colors[i]];
-        }
+//        self.colors=colors;
+//        self.colors=[[NSMutableArray alloc] init];
+//        for(int i=0;i<14;i++)
+//        {
+//            PSSColor *thisColor = colors[i];
+//            [self.colors addObject:thisColor];
+//        }
         NSUserDefaults *data = [NSUserDefaults standardUserDefaults];
         [data setObject:[NSKeyedArchiver archivedDataWithRootObject:colors] forKey:@"color"];
         [data synchronize];
+//        printf("colors %lu", (unsigned long)self.colors.count);
+//        [data setObject:[NSKeyedArchiver archivedDataWithRootObject:weakSelf.colors] forKey:@"asdf"];
+//        [data synchronize];
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
         NSLog(@"Request failed with error: %@", error);
     }];

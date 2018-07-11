@@ -16,10 +16,12 @@
 #import "PSSClient.h"
 #import "PSSCategoryTree.h"
 #import "PSSCategory.h"
+#import "PSSColor.h"
 
 @interface helperfunctions : NSObject <NSCoding, NSCopying>
 
 - (void)fillProductBuffer:(NSString*)search : (NSNumber*)pagingIndex;
+- (void)fillSavedProducts:(NSArray *)savedArray;
 - (void)fillBrandBuffer;
 - (void)fillRetailerBuffer;
 - (void)fillColorBuffer;

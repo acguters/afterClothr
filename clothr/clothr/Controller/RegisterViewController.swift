@@ -98,12 +98,7 @@ class RegisterViewController: UIViewController, UITextFieldDelegate {
 		let savedObject = PFObject(className: "storages")
 		savedObject["user"] = PFUser.current()?.username
 		savedObject["pagingIndexes"] = [String: NSNumber]()
-		savedObject["savedProductImages"] = [Any]()
-		savedObject["savedProductNames"] = [Any]()
-		savedObject["savedProductPrices"] = [Any]()
-		savedObject["savedProductURL"] = [Any]()
-		savedObject["saleBooleans"] = [String]()
-        savedObject["savedBrandNames"] = [Any]()
+        savedObject["productIDs"] = [Any]()
 		savedObject.saveInBackground() { (success,error) in
 			print("object saved")
 		}
